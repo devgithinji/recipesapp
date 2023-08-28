@@ -1,7 +1,7 @@
-import {Component, ComponentFactoryResolver, OnInit, ViewChild} from '@angular/core';
+import {Component, ComponentFactoryResolver, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {NgForm} from '@angular/forms';
 import {AuthResponseData, AuthService} from './auth.service';
-import {Observable} from 'rxjs';
+import {Observable, Subscription} from 'rxjs';
 import {Router} from '@angular/router';
 import {AlertComponent} from '../shared/alert/alert.component';
 import {PlaceholderDirective} from '../shared/placeholder/placeholder.directive';
@@ -11,12 +11,12 @@ import {PlaceholderDirective} from '../shared/placeholder/placeholder.directive'
     templateUrl: './auth.component.html',
     styleUrls: ['./auth.component.css']
 })
-export class AuthComponent implements OnInit {
+export class AuthComponent implements OnDestroy {
     isLoginMode = true;
     isLoading = false;
     error: string = null;
-
     @ViewChild(PlaceholderDirective, {static: false}) alertHost: PlaceholderDirective;
+    private closeSub: Subscription;
 
     constructor(
         private authService: AuthService,
@@ -24,8 +24,6 @@ export class AuthComponent implements OnInit {
         private componentFactoryResolver: ComponentFactoryResolver) {
     }
 
-    ngOnInit(): void {
-    }
 
     onSwitchMode() {
         this.isLoginMode = !this.isLoginMode;
@@ -70,6 +68,17 @@ export class AuthComponent implements OnInit {
         const alertCmpFactory = this.componentFactoryResolver.resolveComponentFactory(AlertComponent);
         const hostViewContainerRef = this.alertHost.viewContainerRef;
         hostViewContainerRef.clear();
-        hostViewContainerRef.createComponent(alertCmpFactory);
+        const componentRef = hostViewContainerRef.createComponent(alertCmpFactory);
+        componentRef.instance.message = errorMessage;
+        this.closeSub = componentRef.instance.close.subscribe(() => {
+            this.closeSub.unsubscribe();
+            hostViewContainerRef.clear();
+        });
+    }
+
+    ngOnDestroy(): void {
+        if (this.closeSub) {
+            this.closeSub.unsubscribe();
+        }
     }
 }
